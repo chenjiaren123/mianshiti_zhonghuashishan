@@ -1,0 +1,90 @@
+
+短路器深入的工作原理
+
+1、如果经过短路器的流量超过了一定的阈值，HystrixCommandProperties.circuitBreakerRequestVolumeThreshold()
+
+举个例子，可能看起来是这样子的，要求在10s内，经过短路器的流量必须达到20个；在10s内，经过短路器的流量才10个，那么根本不会去判断要不要短路
+
+2、如果断路器统计到的异常调用的占比超过了一定的阈值，HystrixCommandProperties.circuitBreakerErrorThresholdPercentage()
+
+如果达到了上面的要求，比如说在10s内，经过短路器的流量（你，只要执行一个command，这个请求就一定会经过短路器），达到了30个；同时其中异常的访问数量，占到了一定的比例，比如说60%的请求都是异常（报错，timeout，reject），会开启短路
+
+3、然后断路器从close状态转换到open状态
+
+4、断路器打开的时候，所有经过该断路器的请求全部被短路，不调用后端服务，直接走fallback降级
+
+5、经过了一段时间之后，HystrixCommandProperties.circuitBreakerSleepWindowInMilliseconds()，会half-open，让一条请求经过短路器，看能不能正常调用。如果调用成功了，那么就自动恢复，转到close状态
+
+短路器，会自动恢复的，half-open，半开状态
+
+6、circuit breaker短路器的配置
+
+（1）circuitBreaker.enabled
+
+控制短路器是否允许工作，包括跟踪依赖服务调用的健康状况，以及对异常情况过多时是否允许触发短路，默认是true
+
+HystrixCommandProperties.Setter()
+   .withCircuitBreakerEnabled(boolean value)
+
+（2）circuitBreaker.requestVolumeThreshold
+
+设置一个rolling window，滑动窗口中，最少要有多少个请求时，才触发开启短路
+
+举例来说，如果设置为20（默认值），那么在一个10秒的滑动窗口内，如果只有19个请求，即使这19个请求都是异常的，也是不会触发开启短路器的
+
+HystrixCommandProperties.Setter()
+   .withCircuitBreakerRequestVolumeThreshold(int value)
+
+（3）circuitBreaker.sleepWindowInMilliseconds
+
+设置在短路之后，需要在多长时间内直接reject请求，然后在这段时间之后，再重新导holf-open状态，尝试允许请求通过以及自动恢复，默认值是5000毫秒
+
+HystrixCommandProperties.Setter()
+   .withCircuitBreakerSleepWindowInMilliseconds(int value)
+
+（4）circuitBreaker.errorThresholdPercentage
+
+设置异常请求量的百分比，当异常请求达到这个百分比时，就触发打开短路器，默认是50，也就是50%
+
+HystrixCommandProperties.Setter()
+   .withCircuitBreakerErrorThresholdPercentage(int value)
+
+（5）circuitBreaker.forceOpen
+
+如果设置为true的话，直接强迫打开短路器，相当于是手动短路了，手动降级，默认false
+
+HystrixCommandProperties.Setter()
+   .withCircuitBreakerForceOpen(boolean value)
+
+（6）circuitBreaker.forceClosed
+
+如果设置为ture的话，直接强迫关闭短路器，相当于是手动停止短路了，手动升级，默认false
+
+HystrixCommandProperties.Setter()
+   .withCircuitBreakerForceClosed(boolean value)
+
+7、实战演练
+
+配置一个断路器，流量要求是20，异常比例是50%，短路时间是5s
+
+在command内加入一个判断，如果是productId=-1，那么就直接报错，触发异常执行
+
+写一个client测试程序，写入50个请求，前20个是正常的，但是后30个是productId=-1，然后继续请求，会发现
+
+《亿级流量电商详情页系统的大型高并发与高可用缓存架构实战》
+
+1、亿级流量的电商网站的商品详情页系统架构
+2、大型的企业级缓存架构，支撑高并发与高可用
+3、几十万QPS的高并发+99.99%高可用+1T以上的海量数据+绝对数据安全的redis集群架构
+4、高并发场景下的数据库+缓存双写一致性保障方案
+5、大缓存的维度化拆分方案
+6、基于双层nginx部署架构的缓存命中率提升方案
+7、基于kafka+spring boot+ehcache+redis+nginx+lua的多级缓存架构
+8、基于zookeeper的缓存并发更新安全保障方案
+9、基于storm+zookeeper的大规模缓存预热解决方案
+10、基于storm+zookeeper+nginx+lua的热点缓存自动降级与恢复解决方案
+11、基于hystrix的高可用缓存服务架构
+12、hystrix的进阶高可用架构方案、架构性能优化以及监控运维
+13、基于hystrix的大规模缓存雪崩解决方案
+14、高并发场景下的缓存穿透解决方案
+15、高并发场景下的缓存失效解决方案

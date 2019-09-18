@@ -1,0 +1,140 @@
+
+快速将核心的功能流程，用代码来实现
+
+从下一讲开始，然后我们其实就针对这里面的一些东西，来给大家讲解哪些地方可能会有可用性的问题，如何用hystrix来解决这些可用性的问题
+
+1、接收数据变更的消息，订阅一个MQ的topic，但是我们这里就简化一下，采取提供一个http接口
+
+2、往http接口发送一条消息，就认为是通知缓存服务，有一个商品的数据变更了
+
+<dependency>
+	<groupId>org.apache.httpcomponents</groupId>
+	<artifactId>httpclient</artifactId>
+	<version>4.4</version>
+</dependency>
+
+/**
+ * HttpClient工具类
+ * @author lixuerui
+ *
+ */
+@SuppressWarnings("deprecation")
+public class HttpClientUtils {
+	
+	/**
+	 * 发送GET请求
+	 * @param url 请求URL
+	 * @return 响应结果
+	 */
+	@SuppressWarnings("resource")
+	public static String sendGetRequest(String url) {
+		String httpResponse = null;
+		
+		HttpClient httpclient = null;
+		InputStream is = null;
+		BufferedReader br = null;
+		
+		try {
+			// 发送GET请求
+			httpclient = new DefaultHttpClient();
+			HttpGet httpget = new HttpGet(url);  
+			HttpResponse response = httpclient.execute(httpget);
+			
+			// 处理响应
+			HttpEntity entity = response.getEntity();
+			if (entity != null) {
+				is = entity.getContent();
+				br = new BufferedReader(new InputStreamReader(is));      
+				
+		        StringBuffer buffer = new StringBuffer("");       
+		        String line = null;   
+		        
+		        while ((line = br.readLine()) != null) {  
+		        		buffer.append(line + "\n");      
+	            }  
+	    
+		        httpResponse = buffer.toString();      
+			}
+		} catch (Exception e) {  
+			e.printStackTrace();  
+		} finally {
+			try {
+				if(br != null) {
+					br.close();
+				}
+				if(is != null) {
+					is.close();
+				}
+			} catch (Exception e2) {
+				e2.printStackTrace();  
+			}
+		}
+		  
+		return httpResponse;
+	}
+	
+	/**
+	 * 发送post请求
+	 * @param url URL
+	 * @param map 参数Map
+	 * @return
+	 */
+	@SuppressWarnings({ "rawtypes", "unchecked", "resource" })
+	public static String sendPostRequest(String url, Map<String,String> map){  
+		HttpClient httpClient = null;  
+        HttpPost httpPost = null;  
+        String result = null;  
+        
+        try{  
+            httpClient = new DefaultHttpClient();  
+            httpPost = new HttpPost(url);  
+            
+            //设置参数  
+            List<NameValuePair> list = new ArrayList<NameValuePair>();  
+            Iterator iterator = map.entrySet().iterator();  
+            while(iterator.hasNext()){  
+                Entry<String,String> elem = (Entry<String, String>) iterator.next();  
+                list.add(new BasicNameValuePair(elem.getKey(), elem.getValue()));  
+            }  
+            if(list.size() > 0){  
+                UrlEncodedFormEntity entity = new UrlEncodedFormEntity(list, "utf-8");    
+                httpPost.setEntity(entity);  
+            }  
+            
+            HttpResponse response = httpClient.execute(httpPost);  
+            if(response != null){  
+                HttpEntity resEntity = response.getEntity();  
+                if(resEntity != null){  
+                    result = EntityUtils.toString(resEntity, "utf-8");    
+                }  
+            }  
+        } catch(Exception ex){  
+            ex.printStackTrace();  
+        } finally {
+        	
+        }
+        
+        return result;  
+    }  
+	
+}
+
+3、缓存服务接收到这条消息之后，就会去通过http调用商品服务的一个接口，获取到商品变更后的最新数据
+
+《亿级流量电商详情页系统的大型高并发与高可用缓存架构实战》
+
+1、亿级流量的电商网站的商品详情页系统架构
+2、大型的企业级缓存架构，支撑高并发与高可用
+3、几十万QPS的高并发+99.99%高可用+1T以上的海量数据+绝对数据安全的redis集群架构
+4、高并发场景下的数据库+缓存双写一致性保障方案
+5、大缓存的维度化拆分方案
+6、基于双层nginx部署架构的缓存命中率提升方案
+7、基于kafka+spring boot+ehcache+redis+nginx+lua的多级缓存架构
+8、基于zookeeper的缓存并发更新安全保障方案
+9、基于storm+zookeeper的大规模缓存预热解决方案
+10、基于storm+zookeeper+nginx+lua的热点缓存自动降级与恢复解决方案
+11、基于hystrix的高可用缓存服务架构
+12、hystrix的进阶高可用架构方案、架构性能优化以及监控运维
+13、基于hystrix的大规模缓存雪崩解决方案
+14、高并发场景下的缓存穿透解决方案
+15、高并发场景下的缓存失效解决方案
